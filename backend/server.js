@@ -1,3 +1,10 @@
+// ─── Startup Diagnostics ────────────────────────────────────────────────────
+console.log("=== Campus Voice Backend Starting ===");
+console.log("Node version:", process.version);
+console.log("PORT:", process.env.PORT);
+console.log("NODE_ENV:", process.env.NODE_ENV);
+console.log("DATABASE_URL set:", !!process.env.DATABASE_URL);
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
