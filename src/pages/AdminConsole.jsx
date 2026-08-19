@@ -164,10 +164,13 @@ export default function AdminConsole() {
           <h2 className="text-lg font-bold text-on-surface mb-6">Complaint Volume Trend (7 Days)</h2>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={analytics.trend}>
+              <LineChart data={analytics.trend && analytics.trend.length > 0 ? analytics.trend : [
+                { name: 'Mon', count: 0 }, { name: 'Tue', count: 0 }, { name: 'Wed', count: 0 },
+                { name: 'Thu', count: 0 }, { name: 'Fri', count: 0 }, { name: 'Sat', count: 0 }, { name: 'Sun', count: 0 }
+              ]}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e0e3e5" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#475569', fontSize: 12}} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{fill: '#475569', fontSize: 12}} dx={-10} />
+                <YAxis axisLine={false} tickLine={false} tick={{fill: '#475569', fontSize: 12}} dx={-10} allowDecimals={false} />
                 <Tooltip 
                   contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} 
                 />
@@ -180,26 +183,33 @@ export default function AdminConsole() {
         {/* Category Pie */}
         <Card className="p-6 flex flex-col">
           <h2 className="text-lg font-bold text-on-surface mb-2">By Category</h2>
-          <div className="flex-1 min-h-[250px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={analytics.byCategory}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {analytics.byCategory.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend verticalAlign="bottom" height={36} iconType="circle" />
-              </PieChart>
-            </ResponsiveContainer>
+          <div className="flex-1 min-h-[250px] flex items-center justify-center">
+            {analytics.byCategory && analytics.byCategory.some(c => c.value > 0) ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={analytics.byCategory}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {analytics.byCategory.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="text-center py-8 text-secondary text-sm">
+                <PieChart className="inline-block opacity-20 mb-2" size={32} />
+                <p>No complaints categorized yet</p>
+              </div>
+            )}
           </div>
         </Card>
       </div>
@@ -208,17 +218,21 @@ export default function AdminConsole() {
         {/* Department Bar Chart */}
         <Card className="lg:col-span-1 p-6">
           <h2 className="text-lg font-bold text-on-surface mb-6">Department Performance</h2>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={analytics.byDepartment} layout="vertical" margin={{top: 0, right: 0, left: -20, bottom: 0}}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e0e3e5" />
-                <XAxis type="number" hide />
-                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{fill: '#475569', fontSize: 12}} width={80} />
-                <Tooltip cursor={{fill: '#f1f5f9'}} />
-                <Bar dataKey="resolved" stackId="a" fill="#10b981" radius={[0, 0, 0, 0]} name="Resolved" barSize={20} />
-                <Bar dataKey="pending" stackId="a" fill="#f59e0b" radius={[0, 4, 4, 0]} name="Pending" />
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="h-64 flex items-center justify-center">
+            {analytics.byDepartment && analytics.byDepartment.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={analytics.byDepartment} layout="vertical" margin={{top: 0, right: 0, left: -20, bottom: 0}}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e0e3e5" />
+                  <XAxis type="number" hide />
+                  <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{fill: '#475569', fontSize: 12}} width={80} />
+                  <Tooltip cursor={{fill: '#f1f5f9'}} />
+                  <Bar dataKey="resolved" stackId="a" fill="#10b981" radius={[0, 0, 0, 0]} name="Resolved" barSize={20} />
+                  <Bar dataKey="pending" stackId="a" fill="#f59e0b" radius={[0, 4, 4, 0]} name="Pending" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className="text-center text-secondary text-sm">No department performance data yet</p>
+            )}
           </div>
         </Card>
 

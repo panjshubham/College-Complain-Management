@@ -34,6 +34,9 @@ export default function Layout() {
     return <Navigate to="/dashboard" replace />;
   }
 
+  // Determine navigation based on user's assigned role
+  const isAdmin = user?.role === 'admin';
+
   const studentNav = [
     { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/new-complaint', icon: PlusCircle, label: 'New Complaint' },
@@ -54,7 +57,7 @@ export default function Layout() {
     { to: '/profile', icon: User, label: 'Profile' },
   ];
 
-  const navItems = isAdminRoute ? adminNav : studentNav;
+  const navItems = isAdmin ? adminNav : studentNav;
 
   const handleLogout = () => {
     logout();
@@ -77,7 +80,7 @@ export default function Layout() {
         isSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
       )}>
         <div className="p-6 flex items-center justify-between">
-          <div className="font-bold text-xl text-primary flex items-center gap-2 cursor-pointer" onClick={() => navigate(user.role === 'admin' ? '/admin' : '/dashboard')}>
+          <div className="font-bold text-xl text-primary flex items-center gap-2 cursor-pointer" onClick={() => navigate(isAdmin ? '/admin' : '/dashboard')}>
              <div className="w-8 h-8 rounded bg-primary text-white flex items-center justify-center font-serif">A</div>
              Academic Resolve
           </div>
@@ -91,12 +94,13 @@ export default function Layout() {
             <NavLink
               key={item.to}
               to={item.to}
+              end={item.to === '/admin' || item.to === '/dashboard'}
               onClick={() => setSidebarOpen(false)}
               className={({ isActive }) => cn(
                 "flex items-center gap-3 px-4 py-2.5 rounded-lg font-medium transition-colors text-sm",
                 isActive 
-                  ? "bg-primary-container text-primary font-bold" 
-                  : "text-secondary hover:bg-surface-variant"
+                  ? "bg-primary text-white font-bold shadow-sm" 
+                  : "text-secondary hover:bg-surface-variant hover:text-on-surface"
               )}
             >
               <item.icon size={18} />
