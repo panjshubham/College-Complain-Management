@@ -1,6 +1,6 @@
-import { Router } from 'express';
-import pool from '../db.js';
-import { authMiddleware, adminOnly } from '../middleware/auth.js';
+const { Router } = require('express');
+const pool = require('../db');
+const { authMiddleware, adminOnly } = require('../middleware/auth');
 
 const router = Router();
 
@@ -45,7 +45,7 @@ router.post('/', authMiddleware, async (req, res) => {
   }
 });
 
-// PATCH /api/maintenance/:id — admin: change status/caretaker
+// PATCH /api/maintenance/:id — admin
 router.patch('/:id', authMiddleware, adminOnly, async (req, res) => {
   const { status, caretaker_id } = req.body;
 
@@ -65,4 +65,4 @@ router.patch('/:id', authMiddleware, adminOnly, async (req, res) => {
   }
 });
 
-export default router;
+module.exports = router;

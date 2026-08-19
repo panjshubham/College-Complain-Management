@@ -1,6 +1,6 @@
-import jwt from 'jsonwebtoken';
+const jwt = require('jsonwebtoken');
 
-export function authMiddleware(req, res, next) {
+function authMiddleware(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Unauthorized — no token provided' });
@@ -16,9 +16,11 @@ export function authMiddleware(req, res, next) {
   }
 }
 
-export function adminOnly(req, res, next) {
+function adminOnly(req, res, next) {
   if (req.user?.role !== 'admin') {
     return res.status(403).json({ error: 'Forbidden — admins only' });
   }
   next();
 }
+
+module.exports = { authMiddleware, adminOnly };

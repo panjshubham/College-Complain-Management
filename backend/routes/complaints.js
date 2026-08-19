@@ -1,10 +1,10 @@
-import { Router } from 'express';
-import pool from '../db.js';
-import { authMiddleware, adminOnly } from '../middleware/auth.js';
+const { Router } = require('express');
+const pool = require('../db');
+const { authMiddleware, adminOnly } = require('../middleware/auth');
 
 const router = Router();
 
-// GET /api/complaints - student: own complaints, admin: all
+// GET /api/complaints
 router.get('/', authMiddleware, async (req, res) => {
   try {
     const { status, category_id, search, page = 1, limit = 10 } = req.query;
@@ -25,14 +25,8 @@ router.get('/', authMiddleware, async (req, res) => {
       params.push(req.user.id);
     }
 
-    if (status) {
-      query += ` AND c.status = $${paramIdx++}`;
-      params.push(status);
-    }
-    if (category_id) {
-      query += ` AND c.category_id = $${paramIdx++}`;
-      params.push(category_id);
-    }
+    if (status) { query += ` AND c.status = $${paramIdx++}`; params.push(status); }
+    if (category_id) { query += ` AND c.category_id = $${paramIdx++}`; params.push(category_id); }
     if (search) {
       query += ` AND (c.title ILIKE $${paramIdx} OR c.description ILIKE $${paramIdx})`;
       params.push(`%${search}%`);
@@ -70,7 +64,6 @@ router.get('/:id', authMiddleware, async (req, res) => {
       return res.status(403).json({ error: 'Forbidden.' });
     }
 
-    // Fetch timeline events
     const timeline = await pool.query(
       'SELECT * FROM complaint_events WHERE complaint_id = $1 ORDER BY created_at ASC',
       [req.params.id]
@@ -99,7 +92,6 @@ router.post('/', authMiddleware, async (req, res) => {
     );
     const complaint = result.rows[0];
 
-    // Create initial timeline event
     await pool.query(
       `INSERT INTO complaint_events (complaint_id, status, note, created_by)
        VALUES ($1, 'open', 'Complaint submitted successfully.', $2)`,
@@ -113,7 +105,7 @@ router.post('/', authMiddleware, async (req, res) => {
   }
 });
 
-// PATCH /api/complaints/:id — admin updates status/caretaker
+// PATCH /api/complaints/:id — admin
 router.patch('/:id', authMiddleware, adminOnly, async (req, res) => {
   const { status, caretaker_id, admin_note } = req.body;
 
@@ -129,7 +121,6 @@ router.patch('/:id', authMiddleware, adminOnly, async (req, res) => {
 
     if (result.rows.length === 0) return res.status(404).json({ error: 'Complaint not found.' });
 
-    // Add timeline event
     if (status || admin_note) {
       await pool.query(
         `INSERT INTO complaint_events (complaint_id, status, note, created_by)
@@ -145,7 +136,7 @@ router.patch('/:id', authMiddleware, adminOnly, async (req, res) => {
   }
 });
 
-// POST /api/complaints/:id/feedback — student submits resolution feedback
+// POST /api/complaints/:id/feedback
 router.post('/:id/feedback', authMiddleware, async (req, res) => {
   const { rating, comment } = req.body;
 
@@ -163,4 +154,4 @@ router.post('/:id/feedback', authMiddleware, async (req, res) => {
   }
 });
 
-export default router;
+module.exports = router;

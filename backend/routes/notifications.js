@@ -1,6 +1,6 @@
-import { Router } from 'express';
-import pool from '../db.js';
-import { authMiddleware } from '../middleware/auth.js';
+const { Router } = require('express');
+const pool = require('../db');
+const { authMiddleware } = require('../middleware/auth');
 
 const router = Router();
 
@@ -30,4 +30,4 @@ router.patch('/:id/read', authMiddleware, async (req, res) => {
   }
 });
 
-export default router;
+module.exports = router;

@@ -1,13 +1,12 @@
-import pg from 'pg';
-const { Pool } = pg;
+const pool = require('pg').Pool;
 
-const pool = new Pool({
+const db = new pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
 });
 
-pool.on('error', (err) => {
+db.on('error', (err) => {
   console.error('Unexpected error on idle client', err);
 });
 
-export default pool;
+module.exports = db;
