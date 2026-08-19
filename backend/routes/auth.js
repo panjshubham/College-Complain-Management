@@ -2,6 +2,7 @@ const { Router } = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pool = require('../db');
+const { sendEmail, emailTemplates } = require('../utils/emailService');
 
 const router = Router();
 
@@ -32,6 +33,9 @@ router.post('/register', async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
+
+    // Send welcome email (non-blocking — never delays or breaks the response)
+    sendEmail(email, emailTemplates.welcomeEmail(full_name)).catch(() => {});
 
     res.status(201).json({ token, user });
   } catch (err) {
@@ -67,6 +71,12 @@ router.post('/login', async (req, res) => {
     );
 
     const { password_hash, ...safeUser } = user;
+
+    // Send login alert email (non-blocking — never delays or breaks the response)
+    const loginTime = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] || 'Unknown';
+    sendEmail(user.email, emailTemplates.loginAlert(user.full_name, loginTime, ipAddress)).catch(() => {});
+
     res.json({ token, user: safeUser });
   } catch (err) {
     console.error(err);
