@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #1a365d;
+  --color-primary-container: #1a365d;
+  --color-on-primary: #ffffff;
+  --color-secondary: #475569;
+  --color-tertiary: #3b82f6;
+  --color-surface: #f7f9fb;
+  --color-surface-dim: #d8dadc;
+  --color-surface-bright: #f7f9fb;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f2f4f6;
+  --color-surface-container: #eceef0;
+  --color-surface-container-high: #e6e8ea;
+  --color-surface-container-highest: #e0e3e5;
+  --color-on-surface: #191c1e;
+  --color-on-surface-variant: #43474e;
+  --color-background: #f7f9fb;
+  --color-on-background: #191c1e;
+  --color-error: #ba1a1a;
+  --color-on-error: #ffffff;
+
+  /* Custom Status Colors based on design spec */
+  --color-status-submitted-bg: #f1f5f9;
+  --color-status-submitted-text: #475569;
+  --color-status-review-bg: #fffbeb;
+  --color-status-review-text: #92400e;
+  --color-status-assigned-bg: #f5f3ff;
+  --color-status-assigned-text: #4338ca;
+  --color-status-progress-bg: #eff6ff;
+  --color-status-progress-text: #1e40af;
+  --color-status-resolved-bg: #f0fdf4;
+  --color-status-resolved-text: #166534;
+
+  --font-sans: "Inter", sans-serif;
+  --font-inter: "Inter", sans-serif;
+
+  --radius-sm: 0.25rem;
+  --radius-DEFAULT: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+}
+
+body {
+  @apply bg-background text-on-background font-sans antialiased;
+}
+
+/* Glassmorphism utility */
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
