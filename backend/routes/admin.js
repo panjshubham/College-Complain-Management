@@ -17,21 +17,22 @@ const transporter = nodemailer.createTransport({
 
 // GET /api/admin/stats
 router.get('/stats', authMiddleware, adminOnly, async (req, res) => {
+  console.log('[ADMIN] GET /api/admin/stats requested by user:', req.user.email || req.user.id);
   try {
     // 1. Basic Counts
     const countsResult = await pool.query(`
       SELECT 
         COUNT(*) as total_complaints,
-        COUNT(*) FILTER (WHERE status = 'open') as pending_count,
-        COUNT(*) FILTER (WHERE status = 'in-progress' OR status = 'assigned' OR status = 'review') as in_progress_count,
-        COUNT(*) FILTER (WHERE status = 'resolved') as resolved_count
+        COUNT(*) FILTER (WHERE status = 'open' OR status = 'Submitted') as pending_count,
+        COUNT(*) FILTER (WHERE status = 'in-progress' OR status = 'in_progress' OR status = 'assigned' OR status = 'review' OR status = 'In Progress' OR status = 'Under Review' OR status = 'Assigned') as in_progress_count,
+        COUNT(*) FILTER (WHERE status = 'resolved' OR status = 'Resolved' OR status = 'closed') as resolved_count
       FROM complaints
     `);
-    const counts = countsResult.rows[0];
+    const counts = countsResult.rows[0] || {};
 
     // 2. Category Breakdown
     const categoryResult = await pool.query(`
-      SELECT cat.name, COUNT(c.id) as value
+      SELECT COALESCE(cat.name, 'Uncategorized') as name, COUNT(c.id) as value
       FROM categories cat
       LEFT JOIN complaints c ON c.category_id = cat.id
       GROUP BY cat.name
@@ -39,9 +40,9 @@ router.get('/stats', authMiddleware, adminOnly, async (req, res) => {
     
     // 3. Department/Location Breakdown (mocking it from locations for now)
     const deptResult = await pool.query(`
-      SELECT COALESCE(location, 'Unspecified') as name,
-             COUNT(*) FILTER (WHERE status = 'resolved') as resolved,
-             COUNT(*) FILTER (WHERE status != 'resolved') as pending
+      SELECT COALESCE(location, 'Campus General') as name,
+             COUNT(*) FILTER (WHERE status = 'resolved' OR status = 'Resolved' OR status = 'closed') as resolved,
+             COUNT(*) FILTER (WHERE status != 'resolved' AND status != 'Resolved' AND status != 'closed') as pending
       FROM complaints
       GROUP BY location
       ORDER BY COUNT(*) DESC
@@ -52,7 +53,7 @@ router.get('/stats', authMiddleware, adminOnly, async (req, res) => {
     const avgTimeResult = await pool.query(`
       SELECT AVG(EXTRACT(EPOCH FROM (updated_at - created_at))/3600) as avg_hours
       FROM complaints
-      WHERE status = 'resolved'
+      WHERE status = 'resolved' OR status = 'Resolved' OR status = 'closed'
     `);
     
     // 5. Trend (7 days)
@@ -64,18 +65,21 @@ router.get('/stats', authMiddleware, adminOnly, async (req, res) => {
       ORDER BY DATE(created_at) ASC
     `);
 
-    res.json({
+    const statsPayload = {
       total: parseInt(counts.total_complaints) || 0,
       pending: parseInt(counts.pending_count) || 0,
       inProgress: parseInt(counts.in_progress_count) || 0,
       resolved: parseInt(counts.resolved_count) || 0,
       avgResolutionTime: parseFloat(avgTimeResult.rows[0]?.avg_hours || 0).toFixed(1),
-      byCategory: categoryResult.rows.map(r => ({ name: r.name, value: parseInt(r.value) })),
-      byDepartment: deptResult.rows.map(r => ({ name: r.name, resolved: parseInt(r.resolved), pending: parseInt(r.pending) })),
-      trend: trendResult.rows.map(r => ({ name: r.name, count: parseInt(r.count) }))
-    });
+      byCategory: categoryResult.rows.map(r => ({ name: r.name, value: parseInt(r.value) || 0 })),
+      byDepartment: deptResult.rows.map(r => ({ name: r.name, resolved: parseInt(r.resolved) || 0, pending: parseInt(r.pending) || 0 })),
+      trend: trendResult.rows.map(r => ({ name: r.name, count: parseInt(r.count) || 0 }))
+    };
+
+    console.log('[ADMIN] Stats payload calculated:', statsPayload);
+    res.json(statsPayload);
   } catch (err) {
-    console.error(err);
+    console.error('[ADMIN] Error fetching stats:', err);
     res.status(500).json({ error: 'Server error fetching stats.' });
   }
 });

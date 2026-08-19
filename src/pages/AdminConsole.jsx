@@ -11,8 +11,21 @@ import { toast } from 'sonner';
 
 export default function AdminConsole() {
   const navigate = useNavigate();
-  const [stats, setStats] = useState(null);
-  const [analytics, setAnalytics] = useState(null);
+  const [stats, setStats] = useState({
+    total: 0,
+    pending: 0,
+    inProgress: 0,
+    resolved: 0,
+    avgResolutionTime: '0.0',
+    byCategory: [],
+    byDepartment: [],
+    trend: []
+  });
+  const [analytics, setAnalytics] = useState({
+    byCategory: [],
+    byDepartment: [],
+    trend: []
+  });
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('All');
@@ -26,22 +39,33 @@ export default function AdminConsole() {
 
   useEffect(() => {
     const fetchAdminData = async () => {
+      console.log('[AdminConsole] Fetching stats and complaints...');
       try {
         const [statsRes, complaintsRes] = await Promise.all([
           apiClient('/api/admin/stats'),
-          apiClient('/api/complaints') // No user filter returns all for admins
+          apiClient('/api/complaints')
         ]);
         
-        if (statsRes.ok && complaintsRes.ok) {
+        console.log('[AdminConsole] Responses:', { statsStatus: statsRes.status, complaintsStatus: complaintsRes.status });
+
+        if (statsRes.ok) {
           const statsData = await statsRes.json();
-          const complaintsData = await complaintsRes.json();
-          
+          console.log('[AdminConsole] Stats loaded:', statsData);
           setStats(statsData);
-          setAnalytics(statsData); // The new API returns everything needed in stats
-          setComplaints(complaintsData);
+          setAnalytics(statsData);
+        } else {
+          console.warn('[AdminConsole] Stats fetch returned non-ok status:', statsRes.status);
+        }
+
+        if (complaintsRes.ok) {
+          const complaintsData = await complaintsRes.json();
+          console.log('[AdminConsole] Complaints loaded:', complaintsData.length);
+          setComplaints(Array.isArray(complaintsData) ? complaintsData : []);
+        } else {
+          console.warn('[AdminConsole] Complaints fetch returned non-ok status:', complaintsRes.status);
         }
       } catch (error) {
-        console.error("Failed to fetch admin data:", error);
+        console.error("[AdminConsole] Failed to fetch admin data:", error);
         toast.error("Failed to load dashboard data");
       } finally {
         setLoading(false);
@@ -59,6 +83,7 @@ export default function AdminConsole() {
   };
 
   const submitStatusUpdate = async () => {
+    console.log(`[AdminConsole] Submitting status update for ${updatingId}:`, updateForm);
     try {
       const res = await apiClient(`/api/admin/complaints/${updatingId}/status`, {
         method: 'PATCH',
@@ -68,6 +93,7 @@ export default function AdminConsole() {
       if (res.ok) {
         toast.success("Complaint updated successfully!");
         const updatedComp = await res.json();
+        console.log('[AdminConsole] Updated complaint response:', updatedComp);
         setComplaints(prev => prev.map(c => c.id === updatingId ? { ...c, status: updatedComp.status } : c));
         setShowUpdateModal(false);
         setUpdatingId(null);
@@ -75,6 +101,7 @@ export default function AdminConsole() {
         toast.error("Failed to update status.");
       }
     } catch (err) {
+      console.error('[AdminConsole] Error updating complaint status:', err);
       toast.error("Network error.");
     }
   };
@@ -91,11 +118,11 @@ export default function AdminConsole() {
   }
 
   const statCards = [
-    { label: 'Total', value: stats.total, icon: FileText, color: 'text-primary', bg: 'bg-primary-container' },
-    { label: 'Pending', value: stats.pending, icon: Clock, color: 'text-yellow-600', bg: 'bg-yellow-100' },
-    { label: 'In Progress', value: stats.inProgress, icon: Loader2, color: 'text-blue-600', bg: 'bg-blue-100' },
-    { label: 'Resolved', value: stats.resolved, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-100' },
-    { label: 'Avg Time (Hrs)', value: stats.avgResolutionTime, icon: Clock, color: 'text-purple-600', bg: 'bg-purple-100' },
+    { label: 'Total', value: stats?.total ?? 0, icon: FileText, color: 'text-primary', bg: 'bg-primary-container' },
+    { label: 'Pending', value: stats?.pending ?? 0, icon: Clock, color: 'text-yellow-600', bg: 'bg-yellow-100' },
+    { label: 'In Progress', value: stats?.inProgress ?? 0, icon: Loader2, color: 'text-blue-600', bg: 'bg-blue-100' },
+    { label: 'Resolved', value: stats?.resolved ?? 0, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-100' },
+    { label: 'Avg Time (Hrs)', value: stats?.avgResolutionTime ?? '0.0', icon: Clock, color: 'text-purple-600', bg: 'bg-purple-100' },
   ];
 
   const COLORS = ['#1a365d', '#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
