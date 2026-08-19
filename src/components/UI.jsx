@@ -59,3 +59,30 @@ export const Card = ({ children, className }) => {
     </div>
   );
 };
+
+export const SkeletonCard = ({ className, type = 'list' }) => {
+  if (type === 'stat') {
+    return (
+      <Card className={cn("p-4 sm:p-6 animate-pulse flex items-center gap-4", className)}>
+        <div className="w-12 h-12 rounded-lg bg-outline-variant/40" />
+        <div className="space-y-2 flex-1">
+          <div className="h-3 bg-outline-variant/60 rounded w-16" />
+          <div className="h-6 bg-outline-variant/80 rounded w-10" />
+        </div>
+      </Card>
+    );
+  }
+  
+  return (
+    <Card className={cn("p-4 animate-pulse", className)}>
+      <div className="flex justify-between items-center mb-4">
+        <div className="h-4 bg-outline-variant/60 rounded w-1/4" />
+        <div className="h-4 bg-outline-variant/60 rounded w-16" />
+      </div>
+      <div className="space-y-3">
+        <div className="h-3 bg-outline-variant/40 rounded w-3/4" />
+        <div className="h-3 bg-outline-variant/40 rounded w-1/2" />
+      </div>
+    </Card>
+  );
+};

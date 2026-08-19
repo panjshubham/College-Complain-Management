@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UploadCloud, Loader2, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { Card, Button, Input } from '../components/UI';
+import { toast } from 'sonner';
 
 export default function NewComplaintForm() {
   const navigate = useNavigate();
@@ -16,6 +17,9 @@ export default function NewComplaintForm() {
     description: '',
     evidence: null
   });
+  
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [dragActive, setDragActive] = useState(false);
   
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -36,10 +40,57 @@ export default function NewComplaintForm() {
     if (errors[id]) setErrors(prev => ({ ...prev, [id]: null }));
   };
 
+  const handleDrag = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFile(e.dataTransfer.files[0]);
+    }
+  };
+
   const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setFormData(prev => ({ ...prev, evidence: file }));
+    if (e.target.files && e.target.files[0]) {
+      handleFile(e.target.files[0]);
+    }
+  };
+
+  const handleFile = (file) => {
+    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+      setErrors(prev => ({ ...prev, evidence: 'Please upload an image or PDF.' }));
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setErrors(prev => ({ ...prev, evidence: 'File must be under 5MB.' }));
+      return;
+    }
+    
+    setErrors(prev => ({ ...prev, evidence: null }));
+    setFormData(prev => ({ ...prev, evidence: file }));
+    
+    if (file.type.startsWith('image/')) {
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+    } else {
+      setPreviewUrl(null);
+    }
+  };
+
+  const removeFile = () => {
+    setFormData(prev => ({ ...prev, evidence: null }));
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
     }
   };
 
@@ -62,11 +113,27 @@ export default function NewComplaintForm() {
     
     setIsSubmitting(true);
     
-    // Mock POST /api/complaints
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    setIsSubmitting(false);
-    setIsSuccess(true);
+    const submitData = new FormData();
+    submitData.append('title', formData.title);
+    submitData.append('category', formData.category);
+    submitData.append('department', formData.department);
+    submitData.append('location', formData.location);
+    submitData.append('description', formData.description);
+    if (formData.evidence) {
+      submitData.append('evidence', formData.evidence);
+    }
+
+    try {
+      // Mock POST /api/complaints
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      setIsSubmitting(false);
+      setIsSuccess(true);
+      toast.success('Complaint submitted successfully!');
+    } catch (error) {
+      console.error(error);
+      setIsSubmitting(false);
+    }
   };
 
   if (isSuccess) {
@@ -172,19 +239,49 @@ export default function NewComplaintForm() {
 
           <div className="flex flex-col space-y-1">
             <label className="text-sm font-semibold text-on-surface">Evidence (Optional)</label>
-            <div className="border-2 border-dashed border-outline-variant rounded-lg p-6 flex flex-col items-center justify-center bg-surface-container-low hover:bg-surface-variant transition-colors cursor-pointer relative">
-              <input 
-                type="file" 
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
-                accept="image/*"
-                onChange={handleFileChange}
-              />
-              <UploadCloud size={32} className="text-secondary mb-2" />
-              <p className="text-sm font-medium text-on-surface">
-                {formData.evidence ? formData.evidence.name : "Click to upload an image"}
-              </p>
-              <p className="text-xs text-secondary mt-1">PNG, JPG up to 5MB</p>
-            </div>
+            {!formData.evidence ? (
+              <div 
+                className={`border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center transition-colors cursor-pointer relative ${dragActive ? 'border-primary bg-primary-container/10' : 'border-outline-variant bg-surface-container-low hover:bg-surface-variant'}`}
+                onDragEnter={handleDrag}
+                onDragLeave={handleDrag}
+                onDragOver={handleDrag}
+                onDrop={handleDrop}
+              >
+                <input 
+                  type="file" 
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
+                  accept="image/*,application/pdf"
+                  onChange={handleFileChange}
+                />
+                <UploadCloud size={32} className="text-secondary mb-2" />
+                <p className="text-sm font-medium text-on-surface">
+                  Drag & drop or click to upload
+                </p>
+                <p className="text-xs text-secondary mt-1">PNG, JPG, PDF up to 5MB</p>
+              </div>
+            ) : (
+              <div className="border border-outline-variant rounded-lg p-4 flex items-center justify-between bg-surface-container-low">
+                <div className="flex items-center space-x-4">
+                  {previewUrl ? (
+                    <img src={previewUrl} alt="Preview" className="w-16 h-16 object-cover rounded" />
+                  ) : (
+                    <div className="w-16 h-16 bg-surface-variant rounded flex items-center justify-center text-xs text-secondary font-medium">PDF</div>
+                  )}
+                  <div>
+                    <p className="text-sm font-medium text-on-surface truncate max-w-[200px] sm:max-w-xs">{formData.evidence.name}</p>
+                    <p className="text-xs text-secondary">{(formData.evidence.size / 1024 / 1024).toFixed(2)} MB</p>
+                  </div>
+                </div>
+                <button 
+                  type="button"
+                  onClick={removeFile}
+                  className="text-error hover:text-red-700 text-sm font-medium"
+                >
+                  Remove
+                </button>
+              </div>
+            )}
+            {errors.evidence && <p className="text-xs text-error mt-1">{errors.evidence}</p>}
           </div>
 
           <div className="pt-4 border-t border-outline-variant flex justify-end gap-4">

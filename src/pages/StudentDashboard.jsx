@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PlusCircle, FileText, Clock, CheckCircle, Loader2, Search, Filter } from 'lucide-react';
-import { Card, Button, StatusChip } from '../components/UI';
+import { Card, Button, StatusChip, SkeletonCard } from '../components/UI';
 
 export default function StudentDashboard() {
   const navigate = useNavigate();
@@ -84,10 +84,7 @@ export default function StudentDashboard() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {loading ? (
           [1, 2, 3, 4].map(i => (
-            <Card key={i} className="p-4 sm:p-6 animate-pulse">
-              <div className="h-4 bg-outline-variant/60 rounded w-16 mb-2" />
-              <div className="h-8 bg-outline-variant/80 rounded w-12" />
-            </Card>
+            <SkeletonCard key={i} type="stat" className="p-4 sm:p-6" />
           ))
         ) : (
           statCards.map((stat, i) => (
@@ -150,7 +147,7 @@ export default function StudentDashboard() {
         {loading ? (
           <div className="space-y-4">
             {[1, 2, 3].map(i => (
-              <div key={i} className="h-12 bg-outline-variant/40 rounded animate-pulse" />
+              <SkeletonCard key={i} type="list" />
             ))}
           </div>
         ) : filteredComplaints.length === 0 ? (

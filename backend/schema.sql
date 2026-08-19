@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS complaints (
   status           TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'in_progress', 'resolved', 'closed', 'rejected')),
   rating           INT CHECK (rating BETWEEN 1 AND 5),
   feedback_comment TEXT,
+  attachment_url   VARCHAR(500),
   created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

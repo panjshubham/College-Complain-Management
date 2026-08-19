@@ -1,8 +1,29 @@
 const { Router } = require('express');
 const pool = require('../db');
 const { authMiddleware, adminOnly } = require('../middleware/auth');
+const multer = require('multer');
+const { createClient } = require('@supabase/supabase-js');
+const { z } = require('zod');
+const { validate } = require('../middleware/validate');
 
 const router = Router();
+
+const storage = multer.memoryStorage();
+const upload = multer({ 
+  storage, 
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf') {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only images and PDFs are allowed.'));
+    }
+  }
+});
+
+const supabaseUrl = process.env.SUPABASE_URL || '';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
 // GET /api/complaints
 router.get('/', authMiddleware, async (req, res) => {
@@ -77,18 +98,47 @@ router.get('/:id', authMiddleware, async (req, res) => {
 });
 
 // POST /api/complaints
-router.post('/', authMiddleware, async (req, res) => {
+const complaintSchema = z.object({
+  title: z.string().min(5, 'Title must be at least 5 characters').max(150, 'Title must not exceed 150 characters'),
+  description: z.string().min(10, 'Description must be at least 10 characters').max(1000, 'Description must not exceed 1000 characters'),
+  category_id: z.string().uuid('Invalid category ID format'),
+  location: z.string().optional(),
+  urgency: z.string().optional(),
+});
+
+router.post('/', authMiddleware, upload.single('evidence'), validate(complaintSchema), async (req, res) => {
   const { title, description, category_id, location, urgency = 'normal' } = req.body;
 
-  if (!title || !description || !category_id) {
-    return res.status(400).json({ error: 'title, description and category_id are required.' });
-  }
-
   try {
+    let attachment_url = null;
+
+    if (req.file && supabase) {
+      const fileExt = req.file.originalname.split('.').pop();
+      const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `${req.user.id}/${fileName}`;
+
+      const { data, error } = await supabase.storage
+        .from('complaint-attachments')
+        .upload(filePath, req.file.buffer, {
+          contentType: req.file.mimetype
+        });
+
+      if (error) {
+        console.error("Supabase upload error:", error);
+        return res.status(500).json({ error: 'Failed to upload evidence.' });
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from('complaint-attachments')
+        .getPublicUrl(filePath);
+
+      attachment_url = publicUrlData.publicUrl;
+    }
+
     const result = await pool.query(
-      `INSERT INTO complaints (user_id, title, description, category_id, location, urgency, status)
-       VALUES ($1, $2, $3, $4, $5, $6, 'open') RETURNING *`,
-      [req.user.id, title, description, category_id, location || null, urgency]
+      `INSERT INTO complaints (user_id, title, description, category_id, location, urgency, status, attachment_url)
+       VALUES ($1, $2, $3, $4, $5, $6, 'open', $7) RETURNING *`,
+      [req.user.id, title, description, category_id, location || null, urgency, attachment_url]
     );
     const complaint = result.rows[0];
 

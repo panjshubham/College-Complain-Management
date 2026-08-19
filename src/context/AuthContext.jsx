@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { apiClient } from '../utils/apiClient';
 
 const AuthContext = createContext();
 
@@ -21,7 +22,7 @@ export function AuthProvider({ children }) {
 
         // Optionally verify session against backend /api/auth/me
         try {
-          const res = await fetch('/api/auth/me', {
+          const res = await apiClient('/api/auth/me', {
             headers: { Authorization: `Bearer ${savedToken}` }
           });
           if (res.ok) {

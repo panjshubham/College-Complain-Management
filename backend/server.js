@@ -4,6 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const rateLimit = require('express-rate-limit');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -14,14 +15,36 @@ console.log("PORT:", PORT);
 console.log("NODE_ENV:", process.env.NODE_ENV);
 console.log("DATABASE_URL set:", !!process.env.DATABASE_URL);
 
+app.set('trust proxy', 1); // Enable if behind a reverse proxy (e.g., Render, Vercel)
+
+// Global Rate Limiter: 100 requests per 15 minutes
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests from this IP, please try again after 15 minutes' }
+});
+
 // Middleware
 app.use(helmet());
 app.use(morgan('combined'));
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      'http://localhost:5173',
+      process.env.FRONTEND_URL
+    ];
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 app.use(express.json());
+app.use('/api/', apiLimiter);
 
 // Health check routes
 app.get('/health', (req, res) => {
@@ -41,6 +64,7 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/complaints', require('./routes/complaints'));
 app.use('/api/categories', require('./routes/categories'));
+app.use('/api/admin', require('./routes/admin'));
 app.use('/api/caretakers', require('./routes/caretakers'));
 app.use('/api/notices', require('./routes/notices'));
 app.use('/api/events', require('./routes/events'));

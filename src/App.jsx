@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { Toaster } from 'sonner';
 import LandingPage from './pages/LandingPage';
 import StudentDashboard from './pages/StudentDashboard';
 import NewComplaintForm from './pages/NewComplaintForm';
@@ -19,6 +20,7 @@ import Layout from './components/Layout';
 function App() {
   return (
     <AuthProvider>
+      <Toaster position="top-right" richColors />
       <Router>
         <Routes>
           <Route path="/" element={<LandingPage />} />

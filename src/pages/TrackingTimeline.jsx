@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Loader2, CheckCircle2, Clock, XCircle, FileText, AlertCircle, Phone, UserCheck, Star } from 'lucide-react';
 import { Card, Button, StatusChip } from '../components/UI';
 import { cn } from '../utils/cn';
+import { toast } from 'sonner';
 
 export default function TrackingTimeline() {
   const navigate = useNavigate();
@@ -27,6 +28,7 @@ export default function TrackingTimeline() {
     await new Promise(resolve => setTimeout(resolve, 600));
     setSubmittedRating(rating);
     setIsSubmittingRating(false);
+    toast.success('Feedback submitted successfully!');
   };
 
   useEffect(() => {

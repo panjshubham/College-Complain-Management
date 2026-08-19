@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/UI';
 import { BookOpen, Zap, Wifi, Home, Coffee, Droplets, Truck, Settings, ShieldCheck, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { toast } from 'sonner';
+import { apiClient } from '../utils/apiClient';
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -88,7 +90,7 @@ export default function LandingPage() {
 
     try {
       // Attempt real backend API login
-      const response = await fetch('/api/auth/login', {
+      const response = await apiClient('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -102,6 +104,7 @@ export default function LandingPage() {
         login(data.user, data.token);
         setShowAuthModal(false);
         setIsSubmitting(false);
+        toast.success('Logged in successfully!');
         navigate(data.user.role === 'admin' ? '/admin' : '/dashboard');
         return;
       } else {
@@ -141,6 +144,7 @@ export default function LandingPage() {
 
     login(fallbackUser, 'mock_token_' + Date.now());
     setShowAuthModal(false);
+    toast.success('Logged in successfully (Mock Mode)!');
     navigate(authRole === 'admin' ? '/admin' : '/dashboard');
   };
 
@@ -174,7 +178,7 @@ export default function LandingPage() {
 
     try {
       // Attempt real backend API registration
-      const response = await fetch('/api/auth/register', {
+      const response = await apiClient('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -192,6 +196,7 @@ export default function LandingPage() {
         login(data.user, data.token);
         setShowAuthModal(false);
         setIsSubmitting(false);
+        toast.success('Account created successfully!');
         navigate('/dashboard');
         return;
       } else {
@@ -222,6 +227,7 @@ export default function LandingPage() {
 
     login(newUser, 'mock_token_' + Date.now());
     setShowAuthModal(false);
+    toast.success('Account created successfully (Mock Mode)!');
     navigate('/dashboard');
   };
 

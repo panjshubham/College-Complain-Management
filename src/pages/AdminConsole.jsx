@@ -4,8 +4,10 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, PieChart, Pie, Cell, Legend
 } from 'recharts';
-import { FileText, Clock, Loader2, CheckCircle, XCircle } from 'lucide-react';
-import { Card, StatusChip } from '../components/UI';
+import { FileText, Clock, Loader2, CheckCircle, XCircle, Search, Filter } from 'lucide-react';
+import { Card, StatusChip, SkeletonCard, Button, Input } from '../components/UI';
+import { apiClient } from '../utils/apiClient';
+import { toast } from 'sonner';
 
 export default function AdminConsole() {
   const navigate = useNavigate();
@@ -14,64 +16,76 @@ export default function AdminConsole() {
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('All');
+  const [categoryFilter, setCategoryFilter] = useState('All');
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  // Inline update state
+  const [updatingId, setUpdatingId] = useState(null);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [updateForm, setUpdateForm] = useState({ status: '', admin_note: '' });
 
   useEffect(() => {
     const fetchAdminData = async () => {
-      setLoading(true);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock stats
-      setStats({
-        total: 124,
-        pending: 15,
-        inProgress: 24,
-        resolved: 78,
-        rejected: 7
-      });
-
-      // Mock analytics
-      setAnalytics({
-        trend: [
-          { name: 'Mon', count: 12 },
-          { name: 'Tue', count: 19 },
-          { name: 'Wed', count: 15 },
-          { name: 'Thu', count: 22 },
-          { name: 'Fri', count: 30 },
-          { name: 'Sat', count: 10 },
-          { name: 'Sun', count: 16 }
-        ],
-        byCategory: [
-          { name: 'Electrical', value: 35 },
-          { name: 'Wi-Fi', value: 25 },
-          { name: 'Plumbing', value: 20 },
-          { name: 'Cleaning', value: 20 }
-        ],
-        byDepartment: [
-          { name: 'CS Block', resolved: 40, pending: 10 },
-          { name: 'Hostel A', resolved: 30, pending: 15 },
-          { name: 'Library', resolved: 25, pending: 5 }
-        ]
-      });
-
-      // Mock complaints
-      setComplaints([
-        { id: 'CMP-1042', title: 'Broken AC in Room 302', department: 'CS Block', status: 'In Progress' },
-        { id: 'CMP-1041', title: 'Wi-Fi drops frequently', department: 'Hostel A', status: 'Submitted' },
-        { id: 'CMP-1040', title: 'Projector not working', department: 'CS Block', status: 'Resolved' },
-        { id: 'CMP-1039', title: 'Water leakage', department: 'Library', status: 'Assigned' },
-        { id: 'CMP-1038', title: 'Noisy fan', department: 'Hostel B', status: 'Rejected' },
-      ]);
-      
-      setLoading(false);
+      try {
+        const [statsRes, complaintsRes] = await Promise.all([
+          apiClient('/api/admin/stats'),
+          apiClient('/api/complaints') // No user filter returns all for admins
+        ]);
+        
+        if (statsRes.ok && complaintsRes.ok) {
+          const statsData = await statsRes.json();
+          const complaintsData = await complaintsRes.json();
+          
+          setStats(statsData);
+          setAnalytics(statsData); // The new API returns everything needed in stats
+          setComplaints(complaintsData);
+        }
+      } catch (error) {
+        console.error("Failed to fetch admin data:", error);
+        toast.error("Failed to load dashboard data");
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchAdminData();
   }, []);
 
+  const handleInlineStatusChange = (e, complaint) => {
+    e.stopPropagation(); // Prevent row click
+    setUpdateForm({ status: e.target.value, admin_note: '' });
+    setUpdatingId(complaint.id);
+    setShowUpdateModal(true);
+  };
+
+  const submitStatusUpdate = async () => {
+    try {
+      const res = await apiClient(`/api/admin/complaints/${updatingId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateForm)
+      });
+      if (res.ok) {
+        toast.success("Complaint updated successfully!");
+        const updatedComp = await res.json();
+        setComplaints(prev => prev.map(c => c.id === updatingId ? { ...c, status: updatedComp.status } : c));
+        setShowUpdateModal(false);
+        setUpdatingId(null);
+      } else {
+        toast.error("Failed to update status.");
+      }
+    } catch (err) {
+      toast.error("Network error.");
+    }
+  };
+
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="space-y-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[1,2,3,4].map(i => <SkeletonCard key={i} type="stat" />)}
+        </div>
+        <SkeletonCard type="list" />
       </div>
     );
   }
@@ -81,14 +95,20 @@ export default function AdminConsole() {
     { label: 'Pending', value: stats.pending, icon: Clock, color: 'text-yellow-600', bg: 'bg-yellow-100' },
     { label: 'In Progress', value: stats.inProgress, icon: Loader2, color: 'text-blue-600', bg: 'bg-blue-100' },
     { label: 'Resolved', value: stats.resolved, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-100' },
-    { label: 'Rejected', value: stats.rejected, icon: XCircle, color: 'text-red-600', bg: 'bg-red-100' },
+    { label: 'Avg Time (Hrs)', value: stats.avgResolutionTime, icon: Clock, color: 'text-purple-600', bg: 'bg-purple-100' },
   ];
 
   const COLORS = ['#1a365d', '#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
 
-  const filteredComplaints = statusFilter === 'All' 
-    ? complaints 
-    : complaints.filter(c => c.status === statusFilter);
+  const filteredComplaints = complaints.filter(c => {
+    const matchesSearch = c.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          c.id?.toString().toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === 'All' || c.status === statusFilter;
+    const matchesCategory = categoryFilter === 'All' || c.category_name === categoryFilter;
+    return matchesSearch && matchesStatus && matchesCategory;
+  });
+
+  const categories = [...new Set(complaints.map(c => c.category_name).filter(Boolean))];
 
   return (
     <div className="space-y-6">
@@ -179,18 +199,43 @@ export default function AdminConsole() {
         <Card className="lg:col-span-2 p-6 flex flex-col">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-bold text-on-surface">Recent Complaints</h2>
-            <select 
-              className="border border-outline rounded px-3 py-1.5 text-sm bg-background text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <option value="All">All Statuses</option>
-              <option value="Submitted">Submitted</option>
-              <option value="Assigned">Assigned</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Resolved">Resolved</option>
-              <option value="Rejected">Rejected</option>
-            </select>
+            
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative">
+                <Search size={16} className="absolute left-3 top-3 text-secondary" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 pr-3 py-1.5 border border-outline rounded text-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+
+              <select 
+                className="border border-outline rounded px-3 py-1.5 text-sm bg-background text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+              >
+                <option value="All">All Categories</option>
+                {categories.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+
+              <select 
+                className="border border-outline rounded px-3 py-1.5 text-sm bg-background text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <option value="All">All Statuses</option>
+                <option value="open">Open</option>
+                <option value="assigned">Assigned</option>
+                <option value="in-progress">In Progress</option>
+                <option value="review">Review</option>
+                <option value="resolved">Resolved</option>
+              </select>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -212,9 +257,19 @@ export default function AdminConsole() {
                   >
                     <td className="py-3 px-2 font-mono text-sm text-secondary">{comp.id}</td>
                     <td className="py-3 px-2 font-medium text-on-surface">{comp.title}</td>
-                    <td className="py-3 px-2 text-secondary text-sm">{comp.department}</td>
-                    <td className="py-3 px-2 text-right">
-                      <StatusChip status={comp.status} />
+                    <td className="py-3 px-2 text-secondary text-sm">{comp.category_name || 'N/A'}</td>
+                    <td className="py-3 px-2 text-right" onClick={(e) => e.stopPropagation()}>
+                      <select
+                        value={comp.status}
+                        onChange={(e) => handleInlineStatusChange(e, comp)}
+                        className="border border-outline rounded px-2 py-1 text-xs bg-surface text-on-surface"
+                      >
+                        <option value="open">Open</option>
+                        <option value="assigned">Assigned</option>
+                        <option value="in-progress">In Progress</option>
+                        <option value="review">Review</option>
+                        <option value="resolved">Resolved</option>
+                      </select>
                     </td>
                   </tr>
                 )) : (
@@ -229,6 +284,40 @@ export default function AdminConsole() {
           </div>
         </Card>
       </div>
+
+      {showUpdateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-on-background/60 backdrop-blur-md">
+          <div className="bg-surface border border-outline-variant rounded-xl shadow-xl w-full max-w-md p-6">
+            <h3 className="text-lg font-bold mb-4 text-primary">Update Status (ID: {updatingId})</h3>
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-sm font-semibold">New Status</label>
+                <select 
+                  className="w-full border border-outline rounded px-3 py-2 text-sm bg-transparent"
+                  value={updateForm.status}
+                  onChange={(e) => setUpdateForm({...updateForm, status: e.target.value})}
+                >
+                  <option value="open">Open</option>
+                  <option value="assigned">Assigned</option>
+                  <option value="in-progress">In Progress</option>
+                  <option value="review">Review</option>
+                  <option value="resolved">Resolved</option>
+                </select>
+              </div>
+              <Input
+                label="Admin Note (Optional)"
+                placeholder="Message to the student..."
+                value={updateForm.admin_note}
+                onChange={(e) => setUpdateForm({...updateForm, admin_note: e.target.value})}
+              />
+              <div className="flex justify-end gap-2 mt-4">
+                <Button variant="secondary" onClick={() => setShowUpdateModal(false)}>Cancel</Button>
+                <Button onClick={submitStatusUpdate}>Update & Notify</Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

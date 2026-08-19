@@ -3,16 +3,32 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pool = require('../db');
 const { sendEmail, emailTemplates } = require('../utils/emailService');
+const rateLimit = require('express-rate-limit');
+const { z } = require('zod');
+const { validate } = require('../middleware/validate');
 
 const router = Router();
 
-// POST /api/auth/register
-router.post('/register', async (req, res) => {
-  const { full_name, email, password, role = 'student', student_roll, department } = req.body;
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // Limit each IP to 5 requests per windowMs
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many authentication attempts from this IP, please try again after 15 minutes' }
+});
 
-  if (!full_name || !email || !password) {
-    return res.status(400).json({ error: 'full_name, email, and password are required.' });
-  }
+const registerSchema = z.object({
+  full_name: z.string().min(2, 'Full name must be at least 2 characters'),
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+  role: z.string().optional(),
+  student_roll: z.string().optional(),
+  department: z.string().optional(),
+});
+
+// POST /api/auth/register
+router.post('/register', authLimiter, validate(registerSchema), async (req, res) => {
+  const { full_name, email, password, role = 'student', student_roll, department } = req.body;
 
   try {
     const existing = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
@@ -44,13 +60,14 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// POST /api/auth/login
-router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
+const loginSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(1, 'Password is required'),
+});
 
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password are required.' });
-  }
+// POST /api/auth/login
+router.post('/login', authLimiter, validate(loginSchema), async (req, res) => {
+  const { email, password } = req.body;
 
   try {
     const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Loader2, Save, MessageSquare, Image as ImageIcon, UserCheck } from 'lucide-react';
 import { Card, Button, StatusChip } from '../components/UI';
+import { toast } from 'sonner';
 
 export default function AdminComplaintDetail() {
   const { id } = useParams();
@@ -21,6 +22,9 @@ export default function AdminComplaintDetail() {
   const [response, setResponse] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [saveNotice, setSaveNotice] = useState('');
+  
+  // Lightbox state
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
   useEffect(() => {
     const fetchComplaintAndCaretakers = async () => {
@@ -41,7 +45,7 @@ export default function AdminComplaintDetail() {
         description: 'The air conditioning unit in classroom 302 has been leaking water and not cooling since yesterday morning.',
         category: 'Electrical',
         location: 'CS Block, 3rd Floor, Room 302',
-        evidenceUrl: '/hero-bg.png',
+        attachment_url: '/hero-bg.png',
         createdAt: '2026-08-18 10:00 AM',
         status: 'In Progress',
         department: 'CS Block',
@@ -97,6 +101,7 @@ export default function AdminComplaintDetail() {
     }));
 
     setIsSaving(false);
+    toast.success('Details updated successfully!');
     setSaveNotice('Details updated successfully!');
     setTimeout(() => setSaveNotice(''), 3000);
   };
@@ -108,6 +113,7 @@ export default function AdminComplaintDetail() {
     await new Promise(resolve => setTimeout(resolve, 600));
     setResponse('');
     setIsSaving(false);
+    toast.success('Response sent to student!');
     setSaveNotice('Response sent to student!');
     setTimeout(() => setSaveNotice(''), 3000);
   };
@@ -185,9 +191,16 @@ export default function AdminComplaintDetail() {
               <ImageIcon size={18} className="mr-2 text-secondary" />
               Evidence Media
             </h3>
-            <div className="bg-surface-variant rounded-lg p-2 border border-outline-variant inline-block">
-              <img src={complaint.evidenceUrl} alt="Evidence" className="rounded max-h-64 object-cover" />
-            </div>
+            {complaint.attachment_url ? (
+              <div 
+                className="bg-surface-variant rounded-lg p-2 border border-outline-variant inline-block cursor-pointer hover:opacity-90 transition-opacity"
+                onClick={() => setIsLightboxOpen(true)}
+              >
+                <img src={complaint.attachment_url} alt="Evidence" className="rounded max-h-64 object-cover" />
+              </div>
+            ) : (
+              <p className="text-sm text-secondary">No evidence attached.</p>
+            )}
           </Card>
 
           <Card>
@@ -326,6 +339,29 @@ export default function AdminComplaintDetail() {
           </Card>
         </div>
       </div>
+
+      {/* Lightbox Modal */}
+      {isLightboxOpen && complaint.attachment_url && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+          onClick={() => setIsLightboxOpen(false)}
+        >
+          <div className="relative max-w-5xl max-h-screen">
+            <button 
+              className="absolute -top-10 right-0 text-white hover:text-gray-300 transition-colors"
+              onClick={() => setIsLightboxOpen(false)}
+            >
+              Close
+            </button>
+            <img 
+              src={complaint.attachment_url} 
+              alt="Evidence Full" 
+              className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" 
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
