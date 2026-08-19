@@ -5,13 +5,14 @@ services:
     region: singapore
     branch: main
     rootDir: backend
-    buildCommand: npm install
+    buildCommand: npm install --production=false
     startCommand: node server.js
+    healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 5000
+        value: 10000
       - key: JWT_SECRET
         value: tmsl2026campusvoice@secretkey
       - key: FRONTEND_URL
